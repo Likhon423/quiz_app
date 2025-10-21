@@ -1,9 +1,8 @@
 from django import forms
 from django.db import IntegrityError
-from django.contrib.auth import authenticate
+from django.contrib import auth
 from django.contrib.auth.models import AnonymousUser
 from .models import User
-import traceback
 
 class RegisterForm(forms.ModelForm):
     password = forms.CharField(widget=forms.PasswordInput, label='Password')
@@ -12,6 +11,9 @@ class RegisterForm(forms.ModelForm):
     class Meta:
         model = User
         fields = ['first_name', 'last_name', 'username', 'email']
+        help_texts = {
+            'username': None
+        }
 
     def clean(self):
         cleaned_data = super().clean()
@@ -29,9 +31,21 @@ class RegisterForm(forms.ModelForm):
         try:
             instance.save()
         except IntegrityError:
-            traceback.print_exc()
-            self.add_error(None, ValueError('Email or username is already registered!'))
+            self.add_error('username', ValueError('Username is already registered!'))
             return None
         self.save_m2m()
         instance.refresh_from_db()
         return instance
+
+class LoginForm(forms.Form):
+    username = forms.CharField(label='Username')
+    password = forms.CharField(widget=forms.PasswordInput, label='Password')
+
+    def process(self, request):
+        user = auth.authenticate(request, **self.cleaned_data)
+        if user is None:
+            self.add_error(None, ValueError("Invalid credentials. Please check your username or password and try again!"))
+            return False
+        
+        auth.login(request, user)
+        return True
