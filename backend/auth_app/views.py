@@ -2,6 +2,7 @@ from django import views
 from django.shortcuts import render, redirect
 from django.http import HttpResponse
 from django.contrib.auth import logout
+from django.contrib import messages
 
 from .forms import RegisterForm, LoginForm
 
@@ -16,10 +17,8 @@ class StudentRegisterView(views.View):
             user = form.save()
             user.role = 'student'
             user.save()
-            return render(request, 'post_register.html', {
-                'title': 'Registration Complete!',
-                'message': 'Your student account has been created. Please login.'
-            })
+            messages.success(request, 'Student account created successfully! Please log in.')
+            return redirect('login')
         return render(request, 'register_student.html', {'form': form})
     
 class TutorRegisterView(views.View):
@@ -33,18 +32,19 @@ class TutorRegisterView(views.View):
             user = form.save()
             user.role = 'tutor'
             user.save()
-            return render(request, 'post_register.html', {
-                'title': 'Registration Complete!',
-                'message': 'Your tutor account has been created. Please login.'
-            })
+            messages.success(request, 'Tutor account created successfully! Please log in.')
+            return redirect('login')
         return render(request, 'register_tutor.html', {'form': form})
     
 def loginView(request):
+    if request.user.is_authenticated:
+        return redirect('home')
+    
     if request.method == "POST":
         form = LoginForm(request.POST)
         if form.is_valid() and form.process(request):
             print(f"{request.user.username} logged in successfully.")
-            return HttpResponse(f"Welcome, {request.user.username}!")
+            return redirect('home')
     else:
         form = LoginForm()
 
@@ -52,4 +52,4 @@ def loginView(request):
 
 def logoutView(request):
     logout(request)
-    return redirect('register/student/')
+    return redirect('login')
