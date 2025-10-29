@@ -9,166 +9,304 @@
 </head>
 <body class="bg-gray-50 min-h-screen flex items-center justify-center px-4 overflow-x-hidden">
 
-    <div class="w-full max-w-2xl sm:max-w-lg md:max-w-2xl bg-white rounded-xl shadow p-4 sm:p-6 space-y-6">
+    <div class="w-full max-w-3xl bg-white rounded-xl shadow p-6 space-y-6">
         <h1 class="text-xl font-bold text-center">
-        Add Question to <span class="text-green-600">{{ quiz.title }}</span>
+            Add Questions to <span class="text-green-600">{{ quiz.title }}</span>
         </h1>
 
-        <form id="question-form" method="POST" class="space-y-6">
-            {% csrf_token %}
+        <!-- Question Container -->
+        <div id="question-container" class="space-y-4"></div>
 
-            <div id="question-container">
-                <div class="question-block border mt-2 p-4 rounded-lg space-y-4 w-full max-w-full">
-                    {{ question_form.as_div }}
-
-                    <!-- MCQ Options -->
-                    <div class="mcq-options hidden space-y-2">
-                        <p class="font-medium text-gray-700">Enter 4 Options:</p>
-                        {% for i in "1234" %}
-                        <div class="flex flex-wrap items-center gap-2">
-                            <input type="radio" name="correct_option_0" value="{{ i }}">
-                            <input type="text" name="option0_{{ i }}" placeholder="Option {{ i }}" class="border rounded flex-1 min-w-0 p-2">
-                        </div>
-                        {% endfor %}
-                    </div>
-
-                    <!-- Fill in the blank -->
-                    <div class="fill-blank hidden space-y-2">
-                        <label class="font-medium text-gray-700">Select the word to make blank:</label>
-                        <select name="blank_word_0" class="border rounded w-full p-2">
-                            <option value="">Type a sentence first</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-
-            <div class="flex flex-col sm:flex-row justify-between gap-2">
-                <button type="button" id="add-question" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-                    + Add Another Question
-                </button>
-
-                <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">
-                    Save All Questions
-                </button>
-            </div>
-        </form>
-
-
-        <div class="text-center">
-            <a href="{% url 'home' %}" class="text-gray-500 hover:underline">← Back to Home</a>
+        <div class="flex justify-between">
+            <button id="add-question" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+            + Add Question
+            </button>
+            <a href="{% url 'home' %}" class="text-gray-500 hover:underline self-center">← Back to Home</a>
         </div>
     </div>
 
+    <!-- TEMPLATE for a Question Block -->
+    <template id="question-template">
+        <form class="question-block border rounded-lg p-4 space-y-3">
+            {% csrf_token %}
+            <textarea placeholder="Enter question" class="border p-2 w-full rounded question-text" required></textarea>
+
+            <select class="border p-2 w-full rounded question-type">
+                <option value="">Select type</option>
+                <option value="mcq">Multiple Choice Question</option>
+                <option value="fill">Fill in the Blank</option>
+            </select>
+
+            <!-- MCQ section -->
+            <div class="mcq-options hidden space-y-2">
+                <p class="font-medium text-gray-700">Enter 4 options:</p>
+                {% for i in "1234" %}
+                <div class="flex items-center gap-2">
+                    <input type="radio" name="correct_option" value="{{ i }}">
+                    <input type="text" class="border p-2 flex-1 rounded option-text" placeholder="Option {{ i }}" required>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Fill-in-the-blank section -->
+            <div class="fill-blank hidden space-y-2">
+                <label class="text-sm text-gray-600">Select the word to make blank:</label>
+                <select class="border p-2 w-full rounded blank-word">
+                    <option value="">Type a sentence first</option>
+                </select>
+            </div>
+
+            <div class="flex justify-end gap-2">
+                <button class="save-btn bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 hidden">💾 Save</button>
+                <button class="update-btn bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 hidden">✏️ Update</button>
+                <button class="remove-btn bg-gray-400 text-white px-3 py-1 rounded hover:bg-gray-500 hidden">✖ Remove</button>
+                <button class="delete-btn bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 hidden">🗑 Delete</button>
+            </div>
+        </form>
+    </template>
+
     <script>
-        const correctAnswerField = document.getElementById('id_correct_answer').closest('div');
-        correctAnswerField.classList.add('hidden');
+        const quizId = "{{ quiz.id }}"
+        const container = document.getElementById("question-container");
+        const template = document.getElementById("question-template");
+        const addBtn = document.getElementById("add-question");
 
-        let questionIndex = 0;
+        function getQuestionData(block) {
+            const textArea = block.querySelector(".question-text");
+            const typeSelect = block.querySelector(".question-type");
+            const blankSelect = block.querySelector(".blank-word");
 
-        function renameFields(block, index) {
-            const textarea = block.querySelector('textarea[name^="question_text"]');
-            if (textarea) textarea.name =  `question_text_${index}`;
+            const question_text = textArea.value.trim();
+            const question_type = typeSelect.value.trim();
 
-            const select = block.querySelector('select[name^="question_type"]');
-            if (select) select.name = `question_type_${index}`;
+            if (!question_text || !question_type) {
+                alert("Please enter question text and select a type.");
+                return;
+            }
 
-            const options = block.querySelectorAll('input[name^="option"]');
-            options.forEach((input, i) => {
-                input.name = `option${index}_${i+1}`;
-            });
+            const data = { question_text, question_type };
 
-            const radios = block.querySelectorAll('.mcq-options input[type="radio"]');
-            radios.forEach((r, i) => {
-                r.name = `correct_option_${index}`;
-                r.value = i + 1;
-            });
+            if (question_type === "mcq") {
+                const options = Array.from(block.querySelectorAll(".option-text")).map(o => o.value.trim());
+                const correct = block.querySelector('input[type="radio"]:checked');
 
-            const blankSelect = block.querySelector('select[name^="blank_word"]');
-            if (blankSelect) blankSelect.name = `blank_word_${index}`;
+                if (options.some(o => !o)) {
+                    alert("Please fill in all four options.");
+                    return;
+                }
+                if (!correct) {
+                    alert("Please select the correct answer.");
+                    return;
+                }
+
+                data.options = options;
+                data.correct_option = correct.value;
+            }
+
+            if (question_type === "fill") {
+                const blank_word = blankSelect.value;
+                data.blank_word = blank_word;
+            }
+
+            return data;
         }
 
-        function updateFields(block) {
-            const typeSelect = block.querySelector('select[name^="question_type"]');
-            const mcqOptions = block.querySelector('.mcq-options');
-            const fillBlank = block.querySelector('.fill-blank');
-            const optionInputs = mcqOptions.querySelectorAll('input[type="text"]');
-            const correctOption = mcqOptions.querySelectorAll('input[type="radio"]');
-            const blankWordSelect = fillBlank.querySelector('select');
-            const questionTextField = block.querySelector('textarea[name^="question_text"]');
 
-            const updateBlankHandler = () => updateBlankWordOptions(block);
+        // Load all questions
+        async function loadQuestions() {
+            const res = await fetch(`/quiz/api/${quizId}/questions/`);
+            const data = await res.json();
+            container.innerHTML = "";
+            console.log(data);
+            data.questions.forEach(q => addQuestionBlock(q));
+        }
 
-            if (typeSelect.value === 'mcq') {
-                mcqOptions.classList.remove('hidden');
-                fillBlank.classList.add('hidden');
-                correctOption.forEach(r => r.required = true);
-                optionInputs.forEach(input => input.required = true);
-                questionTextField.removeEventListener('input', updateBlankHandler);
-            } 
-            else if (typeSelect.value === 'fill') {
-                fillBlank.classList.remove('hidden');
-                mcqOptions.classList.add('hidden');
-                correctOption.forEach(r => r.required = false);
-                optionInputs.forEach(input => input.required = false);
-                questionTextField.addEventListener('input', updateBlankHandler);
-                updateBlankWordOptions(block);
+        // Save new question
+        async function saveQuestion(block) {
+            const data = getQuestionData(block);
+
+            try {
+                const res = await fetch(`/quiz/api/${quizId}/questions/save/`, {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json" },
+                    body: JSON.stringify(data),
+                });
+
+                const result = await res.json();
+                if (result.success) {
+                    alert("Question saved successsfully");
+                    block.dataset.id = result.question.id;
+                    block.querySelector(".save-btn").classList.add("hidden");
+                    block.querySelector(".remove-btn").classList.add("hidden");
+                    block.querySelector(".update-btn").classList.remove("hidden");
+                    block.querySelector(".delete-btn").classList.remove("hidden");
+                } else {
+                    alert("Failed to save question");
+                }
+
+            } catch (err) {
+                console.error(err);
             }
         }
 
-        function updateBlankWordOptions(block) {
-            const blankSelect = block.querySelector('select[name^="blank_word"]');
-            const textField = block.querySelector('textarea[name^="question_text"]');
-            const text = textField.value.trim();
-            blankSelect.innerHTML = '';
+        // Update question
+        async function updateQuestion(block) {
+            const questionId = block.dataset.id;
+            console.log(block.dataset);
+            
+            const data = getQuestionData(block);
+
+            try {
+                const res = await fetch(`/quiz/api/${quizId}/questions/update/${questionId}/`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(data),
+                });
+                const result = await res.json();
+                if (result.success) {
+                    alert("Question updated successfully!");
+                } else {
+                    alert("Failed to update question.");
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        // Delete question
+        async function deleteQuestion(block) {
+            const questionId = block.dataset.id;
+            try {
+                const res = await fetch(`/quiz/api/${quizId}/questions/delete/${questionId}/`, {
+                    method: "DELETE",
+                });
+                const result = await res.json();
+                if (result.success) {
+                    block.remove();
+                    alert("Question deleted successfully!");
+                } else {
+                    alert("Failed to delete question.");
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+
+        // Add new question block to the frontend
+        function addQuestionBlock(question = null) {
+            const clone = template.content.cloneNode(true);
+            const block = clone.querySelector(".question-block");
+
+            if (question) block.dataset.id = question.id;
+
+            const textArea = block.querySelector(".question-text");
+            const typeSelect = block.querySelector(".question-type");
+            const mcqSection = block.querySelector(".mcq-options");
+            const fillSection = block.querySelector(".fill-blank");
+            const blankSelect = block.querySelector(".blank-word");
+
+            if (question) {
+                textArea.value = question.question_text;
+                typeSelect.value = question.question_type;
+
+                if (question.question_type === "mcq") {
+                    mcqSection.classList.remove("hidden");
+
+                    const radios = block.querySelectorAll('input[type="radio"]');
+                    const optionTexts = block.querySelectorAll('.option-text');
+
+                    radios.forEach(r => r.name = `correct_option_${question.id}`);
+
+                    question.options.forEach((opt, i) => {
+                        if (optionTexts[i]) {
+                            optionTexts[i].value = opt;
+                            
+                            if (opt.trim().toLowerCase() === question.correct_answer.trim().toLowerCase()) {
+                                radios[i].checked = true;
+                            }
+                        }
+                    });
+                } else if (question.question_type === "fill") {
+                    fillSection.classList.remove("hidden");
+                    const restoredText = question.question_text.replace("_____", question.correct_answer);
+                    textArea.value = restoredText;
+                    updateBlankWordOptions(block, question.correct_answer);
+                }
+                
+                block.querySelector(".update-btn").classList.remove("hidden");
+                block.querySelector(".delete-btn").classList.remove("hidden");
+            } else {
+                block.querySelector(".save-btn").classList.remove("hidden");
+                block.querySelector(".remove-btn").classList.remove("hidden");
+            }
+
+            typeSelect.addEventListener("change", () => {
+                if (typeSelect.value === "mcq") {
+                    mcqSection.classList.remove("hidden");
+                    fillSection.classList.add("hidden");
+                    textArea.removeEventListener("input", () => updateBlankWordOptions(block));
+                } else if (typeSelect.value === "fill") {
+                    mcqSection.classList.add("hidden");
+                    fillSection.classList.remove("hidden");
+                    updateBlankWordOptions(block);
+                    textArea.addEventListener("input", () => updateBlankWordOptions(block));
+                } else {
+                    mcqSection.classList.add("hidden");
+                    fillSection.classList.add("hidden");
+                }
+            });
+            container.appendChild(block);
+        }
+
+
+        // populate fill in the blank options
+        function updateBlankWordOptions(block, selectedWord = "") {
+            const text = block.querySelector(".question-text").value.trim();
+            const select = block.querySelector(".blank-word");
+            select.innerHTML = "";
 
             if (!text) {
-                blankSelect.innerHTML = '<option value="">Type a sentence first</option>';
+                select.innerHTML = '<option value="">Type a sentence first</option>';
                 return;
             }
 
             const words = text.match(/\b[\w']+\b/g);
-            words.forEach((word, index) => {
-                const opt = document.createElement('option');
-                opt.value = `${index}|${word}`;
+            words.forEach((word, i) => {
+                const opt = document.createElement("option");
+                opt.value = `${i}|${word}`;
                 opt.textContent = word;
-                blankSelect.appendChild(opt);
+                if (selectedWord && word.trim() === selectedWord) opt.selected = true;
+                select.appendChild(opt);
             });
         }
 
+        loadQuestions();
 
+        addBtn.addEventListener("click", () => addQuestionBlock());
+ 
+        container.addEventListener("click", async (e) => {
+            const block = e.target.closest(".question-block");
+            if (!block) return;
 
-        document.addEventListener('DOMContentLoaded', () => {
-            const firstBlock = document.querySelector('.question-block');
-            renameFields(firstBlock, questionIndex);
-            updateFields(firstBlock);
+            if (e.target.classList.contains("save-btn")) {
+                await saveQuestion(block);
+            }
+
+            if (e.target.classList.contains("update-btn")) {
+                await updateQuestion(block);
+            }
+
+            if (e.target.classList.contains("delete-btn")) {
+                if (confirm("Are you sure you want to delete this question?")) {
+                    await deleteQuestion(block);
+                } 
+            }
+
+            if (e.target.classList.contains("remove-btn")) {
+                block.remove();
+            }
         });
-
-        document.getElementById('add-question').addEventListener('click', () => {
-            const firstBlock = document.querySelector('.question-block');
-            const clone = firstBlock.cloneNode(true);
-            const questionContainer = document.getElementById('question-container');
-
-            clone.querySelectorAll('input, select, textarea').forEach(e => {
-                if (e.type === 'radio') e.checked = false;
-                else e.value = '';
-            });
-
-            questionIndex++;
-            
-            clone.querySelector('.mcq-options').classList.add('hidden');
-            clone.querySelector('.fill-blank').classList.add('hidden');
-            
-            renameFields(clone, questionIndex);
-            updateFields(clone);
-
-            questionContainer.appendChild(clone);
-        });
-
-        document.getElementById('question-container').addEventListener('change', e => {
-            const block = e.target.closest('.question-block');
-            if (e.target.name.startsWith('question_type')) updateFields(block);
-        })
     </script>
-
 </body>
 </html>
