@@ -1,13 +1,12 @@
 import re
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth import logout
+from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib.auth.decorators import login_required
-from .models import Quiz, Option
-from .forms import QuizForm, QuestionForm
+from .models import Quiz
+from .forms import QuizForm
 
 
 @login_required
-def createQuizView(request):
+def create_quiz_view(request):
     if request.user.role != 'tutor':
         return redirect('home')
     
@@ -27,7 +26,23 @@ def createQuizView(request):
     
 
 @login_required
-def addQuestionView(request, quiz_id):
-    quiz = get_object_or_404(Quiz, id=quiz_id, tutor=request.user)
+def my_quizzes_view(request):
+    if request.user.role != 'tutor':
+        return redirect('home')
+    
+    quizzes = Quiz.objects.filter(tutor=request.user).order_by('-created_at')
+    return render(request, 'my_quizzes.html', {'quizzes': quizzes})
+    
+@login_required
+def all_quizzes_view(request):
+    quizzes = Quiz.objects.all().order_by('-created_at')
+    return render(request, 'all_quizzes.html', {'quizzes': quizzes})
 
+@login_required
+def add_question_view(request, quiz_id):
+    if request.user.role != 'tutor':
+        return redirect('home')
+    
+    quiz = Quiz.objects.get(id=quiz_id, tutor=request.user)
     return render(request, 'add_question.html', {'quiz': quiz})
+

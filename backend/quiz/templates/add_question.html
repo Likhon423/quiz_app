@@ -7,7 +7,7 @@
     <title>Add Questions - {{ quiz.title }}</title>
     <link rel="stylesheet" href="{% static 'dist/output.css' %}">
 </head>
-<body class="bg-gray-50 min-h-screen flex items-center justify-center px-4 overflow-x-hidden">
+<body class="bg-linear-to-br from-blue-50 to-green-50 min-h-screen flex items-center justify-center px-4 overflow-x-hidden">
 
     <div class="w-full max-w-3xl bg-white rounded-xl shadow p-6 space-y-6">
         <h1 class="text-xl font-bold text-center">
@@ -17,17 +17,21 @@
         <!-- Question Container -->
         <div id="question-container" class="space-y-4"></div>
 
-        <div class="flex justify-between">
-            <button id="add-question" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-            + Add Question
+        <div class="flex flex-col sm:flex-row justify-between items-center gap-3">
+            <button id="add-question"
+                class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 w-full sm:w-auto text-center">
+                + Add Question
             </button>
-            <a href="{% url 'home' %}" class="text-gray-500 hover:underline self-center">← Back to Home</a>
+            <a href="{% url 'home' %}"
+            class="text-gray-500 hover:underline self-center text-sm sm:text-base">
+                ← Back to Home
+            </a>
         </div>
     </div>
 
     <!-- TEMPLATE for a Question Block -->
     <template id="question-template">
-        <form class="question-block border rounded-lg p-4 space-y-3">
+        <form class="question-block border rounded-lg p-4 space-y-3" method="POST">
             {% csrf_token %}
             <textarea placeholder="Enter question" class="border p-2 w-full rounded question-text" required></textarea>
 
@@ -43,7 +47,10 @@
                 {% for i in "1234" %}
                 <div class="flex items-center gap-2">
                     <input type="radio" name="correct_option" value="{{ i }}">
-                    <input type="text" class="border p-2 flex-1 rounded option-text" placeholder="Option {{ i }}" required>
+                    <input type="text"
+                        class="border p-2 w-full rounded option-text"
+                        placeholder="Option {{ i }}"
+                        required>
                 </div>
                 {% endfor %}
             </div>
@@ -57,10 +64,10 @@
             </div>
 
             <div class="flex justify-end gap-2">
-                <button class="save-btn bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 hidden">💾 Save</button>
-                <button class="update-btn bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 hidden">✏️ Update</button>
-                <button class="remove-btn bg-gray-400 text-white px-3 py-1 rounded hover:bg-gray-500 hidden">✖ Remove</button>
-                <button class="delete-btn bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 hidden">🗑 Delete</button>
+                <button type="button" class="save-btn bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 hidden">💾 Save</button>
+                <button type="button" class="update-btn bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700 hidden">✏️ Update</button>
+                <button type="button" class="remove-btn bg-gray-400 text-white px-3 py-1 rounded hover:bg-gray-500 hidden">✖ Remove</button>
+                <button type="button" class="delete-btn bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 hidden">🗑 Delete</button>
             </div>
         </form>
     </template>
@@ -70,6 +77,10 @@
         const container = document.getElementById("question-container");
         const template = document.getElementById("question-template");
         const addBtn = document.getElementById("add-question");
+
+        function getCSRFToken() {
+            return document.querySelector('[name=csrfmiddlewaretoken]').value;
+        }
 
         function getQuestionData(block) {
             const textArea = block.querySelector(".question-text");
@@ -128,7 +139,7 @@
             try {
                 const res = await fetch(`/quiz/api/${quizId}/questions/save/`, {
                     method: "POST",
-                    headers: {"Content-Type": "application/json" },
+                    headers: {"Content-Type": "application/json", 'X-CSRFToken': getCSRFToken() },
                     body: JSON.stringify(data),
                 });
 
@@ -159,7 +170,7 @@
             try {
                 const res = await fetch(`/quiz/api/${quizId}/questions/update/${questionId}/`, {
                     method: "PUT",
-                    headers: { "Content-Type": "application/json" },
+                    headers: { "Content-Type": "application/json", 'X-CSRFToken': getCSRFToken() },
                     body: JSON.stringify(data),
                 });
                 const result = await res.json();
@@ -179,6 +190,7 @@
             try {
                 const res = await fetch(`/quiz/api/${quizId}/questions/delete/${questionId}/`, {
                     method: "DELETE",
+                    headers: { 'X-CSRFToken': getCSRFToken()}
                 });
                 const result = await res.json();
                 if (result.success) {
@@ -232,6 +244,7 @@
                     const restoredText = question.question_text.replace("_____", question.correct_answer);
                     textArea.value = restoredText;
                     updateBlankWordOptions(block, question.correct_answer);
+                    textArea.addEventListener("input", () => updateBlankWordOptions(block));
                 }
                 
                 block.querySelector(".update-btn").classList.remove("hidden");
@@ -256,6 +269,7 @@
                     fillSection.classList.add("hidden");
                 }
             });
+
             container.appendChild(block);
         }
 

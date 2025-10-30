@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'auth_app',
     'home',
     'quiz',
+    'attempts',
     'rest_framework',
     'corsheaders',
 ]

@@ -1,7 +1,6 @@
 import json, re
 
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.decorators import login_required
@@ -42,6 +41,8 @@ def save_or_update_question(quiz, data, questionObj=None):
         options = data.get('options', [])
         correct_option = data.get('correct_option')
 
+        question.options.all().delete()
+
         option_index = 1
 
         for text in options:
@@ -79,7 +80,6 @@ def get_questions(request, quiz_id):
 
 
 @login_required
-@csrf_exempt
 @require_http_methods(["POST"])
 def save_question(request, quiz_id):
     quiz = get_object_or_404(Quiz, id=quiz_id, tutor=request.user)
@@ -90,7 +90,6 @@ def save_question(request, quiz_id):
 
 
 @login_required
-@csrf_exempt
 @require_http_methods(["PUT"])
 def update_question(request, quiz_id, question_id):
     quiz = get_object_or_404(Quiz, id=quiz_id, tutor=request.user)
@@ -102,10 +101,16 @@ def update_question(request, quiz_id, question_id):
 
 
 @login_required
-@csrf_exempt
 @require_http_methods(["DELETE"])
 def delete_question(request, quiz_id, question_id):
     quiz = get_object_or_404(Quiz, id=quiz_id, tutor=request.user)
     question = get_object_or_404(Question, id=question_id, quiz=quiz)
     question.delete()
+    return JsonResponse({"success": True})
+
+@login_required
+@require_http_methods(["DELETE"])
+def delete_quiz(request, quiz_id):
+    quiz = get_object_or_404(Quiz, id=quiz_id, tutor=request.user)
+    quiz.delete()
     return JsonResponse({"success": True})
