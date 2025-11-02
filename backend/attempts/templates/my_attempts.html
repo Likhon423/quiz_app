@@ -1,0 +1,91 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Quiz Attempts</title>
+  <link rel="stylesheet" href="{% static 'dist/output.css' %}">
+</head>
+
+<body class="bg-linear-to-br from-blue-50 to-green-50 min-h-screen flex justify-center py-12 px-4">
+  <div class="w-full max-w-4xl bg-white shadow-2xl rounded-3xl p-10 space-y-8">
+    
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row justify-between items-center">
+      <h1 class="text-4xl font-extrabold text-gray-800 tracking-tight">
+        My Quiz Attempts
+      </h1>
+      <a href="{% url 'home' %}" class="text-gray-600 hover:text-gray-900 hover:underline text-md mt-3 sm:mt-0">
+        ← Back to Home
+      </a>
+    </div>
+
+    {% if attempts %}
+      <div class="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
+        <table class="w-full border-collapse text-sm md:text-base">
+          <thead>
+            <tr class="bg-gray-100 text-gray-700 uppercase tracking-wide text-left">
+              <th class="p-4">Quiz</th>
+              <th class="p-4 text-center">Status</th>
+              <th class="p-4 text-center">Score</th>
+              <th class="p-4 text-center">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for attempt in attempts %}
+              <tr class="border-t border-gray-200 hover:bg-gray-50 transition-all duration-150">
+                <td class="p-4 font-semibold text-gray-800">{{ attempt.quiz.title }}</td>
+
+                <td class="p-4 text-center">
+                  {% if attempt.is_submitted %}
+                    <span class="px-3 py-1 bg-green-100 text-green-700 font-medium rounded-full text-xs md:text-sm">
+                      Completed
+                    </span>
+                  {% else %}
+                    <span class="px-3 py-1 bg-yellow-100 text-yellow-700 font-medium rounded-full text-xs md:text-sm">
+                      In Progress
+                    </span>
+                  {% endif %}
+                </td>
+
+                <td class="p-4 text-center font-medium">
+                  {% if attempt.is_submitted %}
+                    {{ attempt.score }} / {{ attempt.quiz.questions.count }}
+                  {% else %}
+                    <span class="text-gray-400">—</span>
+                  {% endif %}
+                </td>
+
+                <td class="p-4 text-center space-x-2">
+                  {% if attempt.is_submitted %}
+                    <a href="{% url 'view_results' attempt.id %}"
+                       class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-lg transition-all duration-150">
+                      View Results
+                    </a>
+                  {% else %}
+                    <a href="{% url 'continue_attempt' attempt.id %}"
+                       class="inline-block bg-yellow-500 hover:bg-yellow-600 text-white font-medium px-4 py-2 rounded-lg transition-all duration-150">
+                      Continue
+                    </a>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="text-gray-600 text-center mt-10 text-lg">
+        You haven't attempted any quizzes yet.
+      </p>
+    {% endif %}
+
+    <div class="text-center mt-8">
+      <a href="{% url 'home' %}" class="inline-block bg-gray-700 text-white px-6 py-3 rounded-lg hover:bg-gray-800 transition-all duration-150">
+        Back to Home
+      </a>
+    </div>
+  </div>
+</body>
+</html>

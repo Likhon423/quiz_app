@@ -1,0 +1,116 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ quiz.title }} - Attempt</title>
+    <link rel="stylesheet" href="{% static 'dist/output.css' %}">
+</head>
+
+<body class="bg-gray-100 min-h-screen flex justify-center items-center py-10">
+    <div class="bg-white rounded-2xl shadow-xl p-8 w-full max-w-2xl text-center">
+        <h1 class="text-2xl font-bold mb-6 text-gray-800">{{ quiz.title }}</h1>
+
+        {% if quiz.questions.exists %}
+            <form id="answer-form" class="text-left">
+                {% csrf_token %}
+                <input type="hidden" name="question_id" id="question-id">
+
+                <div id="question-container" class="mb-6">
+                    <h2 id="question-text" class="text-lg font-semibold mb-4"></h2>
+                    <div id="options-container" class="space-y-2"></div>
+                </div>
+
+                <div class="flex justify-between mt-6">
+                    <button type="button" id="prev-btn" class="bg-gray-400 text-white px-4 py-2 rounded-lg hover:bg-gray-500 transition">Previous</button>
+                    <button type="button" id="next-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">Next</button>
+                    <button type="button" id="submit-btn" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition hidden">Submit</button>
+                </div>
+            </form>
+        {% else %}
+            <p class="text-gray-600 text-lg mb-8">
+                This tutor hasn't set any questions for this quiz yet.
+            </p>
+        {% endif %}
+
+        <div class="mt-8">
+            <a href="{% url 'home' %}" class="text-blue-600 hover:underline text-md">← Back to Home</a>
+        </div>
+    </div>
+
+    {% if quiz.questions.exists %}
+    <script>
+        const attemptId = "{{ attempt.id }}";
+        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('answer-form');
+            const nextBtn = document.getElementById('next-btn');
+            const submitBtn = document.getElementById('submit-btn');
+
+            loadQuestion();
+
+            form.addEventListener('keydown', e => {
+                if (e.key === 'Enter' && e.target.tagName.toLowerCase() !== 'textarea') {
+                    e.preventDefault();
+                    (submitBtn.classList.contains('hidden') ? nextBtn : submitBtn).click();
+                }
+            });
+
+            document.getElementById('prev-btn').onclick = () => navigate('prev');
+            nextBtn.onclick = () => navigate('next');
+            submitBtn.onclick = submitAttempt;
+        });
+
+        function loadQuestion() {
+            fetch(`/attempt/${attemptId}/question/`)
+                .then(r => r.json())
+                .then(data => {
+                    document.getElementById('question-id').value = data.question_id;
+                    document.getElementById('question-text').innerText = data.question_text;
+
+                    const container = document.getElementById('options-container');
+                    container.innerHTML = data.options.length
+                        ? data.options.map(opt => `
+                            <label class="flex items-center space-x-2">
+                                <input type="radio" name="selected_answer" value="${opt}" ${data.selected_answer === opt ? 'checked' : ''}>
+                                <span>${opt}</span>
+                            </label>
+                          `).join('')
+                        : `<input type="text" name="selected_answer" class="border rounded-lg p-2 w-full" value="${data.selected_answer || ''}">`;
+
+                    document.getElementById('submit-btn').classList.toggle('hidden', !data.is_last);
+                    document.getElementById('next-btn').classList.toggle('hidden', data.is_last);
+                })
+                .catch(err => console.error('Error loading question:', err));
+        }
+
+        function saveAnswer() {
+            const formData = new FormData(document.getElementById('answer-form'));
+            return fetch(`/attempt/${attemptId}/save-answer/`, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrftoken },
+                body: formData
+            });
+        }
+
+        async function navigate(direction) {
+            await saveAnswer();
+            await fetch(`/attempt/${attemptId}/navigate/?direction=${direction}`);
+            loadQuestion();
+        }
+
+        async function submitAttempt() {
+            await saveAnswer();
+            const res = await fetch(`/attempt/${attemptId}/submit/`);
+            const data = await res.json();
+            if (data.success) {
+                alert(`Quiz submitted! Your score: ${data.score}`);
+                window.location.href = "{% url 'view_results' attempt.id %}";
+            }
+        }
+    </script>
+    {% endif %}
+</body>
+</html>

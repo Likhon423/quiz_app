@@ -1,0 +1,51 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ quiz.title }} - Results</title>
+  <link rel="stylesheet" href="{% static 'dist/output.css' %}">
+</head>
+
+<body class="bg-linear-to-br from-blue-50 to-green-50 min-h-screen flex justify-center py-10 px-4">
+  <div class="w-full max-w-3xl bg-white shadow-xl rounded-2xl p-8">
+    
+    <div class="flex flex-col sm:flex-row justify-between items-center mb-6">
+      <h1 class="text-3xl font-bold text-gray-800">{{ quiz.title }} - Results</h1>
+      <a href="{% url 'home' %}" class="text-gray-600 hover:text-gray-800 hover:underline text-md">
+        ← Back to Home
+      </a>
+    </div>
+
+    <div class="bg-gray-100 p-4 rounded-lg mb-6 flex justify-between">
+      <span class="font-semibold text-gray-700">Score:</span>
+      <span class="font-bold text-xl text-green-700">{{ attempt.score }} / {{ quiz.questions.count }}</span>
+    </div>
+
+    {% for q in questions %}
+      <div class="border rounded-xl p-5 mb-5 {% if q.is_correct %}bg-green-50{% else %}bg-red-50{% endif %}">
+        <p class="font-semibold text-gray-800 mb-2">
+          {{ forloop.counter }}. {{ q.question_text }}
+        </p>
+        <p class="mb-1">
+          <span class="font-medium text-gray-700">Your answer:</span>
+          <span class="{% if q.is_correct %}text-green-700{% else %}text-red-700{% endif %}">
+            {{ q.selected_answer }}
+          </span>
+        </p>
+        <p>
+          <span class="font-medium text-gray-700">Correct answer:</span>
+          <span class="text-green-700">{{ q.correct_answer }}</span>
+        </p>
+      </div>
+    {% endfor %}
+
+    <div class="text-center mt-8">
+      <a href="{% url 'my_attempts' %}" class="bg-gray-600 text-white px-5 py-2 rounded-lg hover:bg-gray-700 transition">
+        Back to My Attempts
+      </a>
+    </div>
+  </div>
+</body>
+</html>
